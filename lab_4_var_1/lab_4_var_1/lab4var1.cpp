@@ -116,7 +116,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 		if (y <= 0)
 			y = 0;
 
-		SetWindowPos(hWnd, HWND_TOP, x, y, NULL, NULL, SWP_NOSIZE);
+		SetWindowPos(hWnd, HWND_TOPMOST, x, y, NULL, NULL, SWP_NOSIZE);
 		break;
 
 	case WM_DESTROY:
