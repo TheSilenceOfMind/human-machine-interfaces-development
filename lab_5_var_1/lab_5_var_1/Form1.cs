@@ -59,10 +59,11 @@ namespace lab_5_var_1
             int row = this.tableLayoutPanel1.GetRow(b);
             Console.WriteLine(row);
 
-            ProcessModuleCollection modules = myProcess.getAllModulesByIndexInString(row);
-            Form2 f = new Form2();
-            f.Text = this.tableLayoutPanel1.GetControlFromPosition(0, row).Text; // set title of window
+            int id = int.Parse(this.tableLayoutPanel1.GetControlFromPosition(1, row).Text);
+            ProcessModuleCollection modules = myProcess.getAllProcessModulesById(id);
 
+            Form2 f = new Form2();
+            f.Text = this.tableLayoutPanel1.GetControlFromPosition(0, row).Text + " (" + id.ToString() + ")"; // set title of window
             foreach (ProcessModule i in modules)
             {
                 f.table.RowCount++;
