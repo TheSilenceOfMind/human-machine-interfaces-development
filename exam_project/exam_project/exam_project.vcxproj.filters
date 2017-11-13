@@ -30,12 +30,18 @@
     <ClInclude Include="examproject.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="KWnd.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="examproject.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="KWnd.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -49,6 +55,12 @@
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="examproject.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="Beemo.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="mask_ex.bmp">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>

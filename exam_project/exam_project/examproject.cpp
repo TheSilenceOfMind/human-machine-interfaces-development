@@ -2,179 +2,101 @@
 //
 
 #include "stdafx.h"
-#include "examproject.h"
+#include "examproject.h"#include <windows.h>
+#include <stdio.h>
+#include <math.h>
+#include "KWnd.h"
+#include "resource.h"
 
-#define MAX_LOADSTRING 100
+#define Pi 3.14159265
 
-// Global Variables:
-HINSTANCE hInst;                                // current instance
-WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
-WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
+LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
+void DrawPlayer(HWND hwnd, HDC hdc, HDC hMemFrameDC, HBITMAP hBmp, BITMAP bm, FLOAT x, FLOAT y);
 
-// Forward declarations of functions included in this code module:
-ATOM                MyRegisterClass(HINSTANCE hInstance);
-BOOL                InitInstance(HINSTANCE, int);
-LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
-INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
+int cx, cy; // размеры экрана
+BITMAP bm; // инфо о растре
 
-int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
-                     _In_opt_ HINSTANCE hPrevInstance,
-                     _In_ LPWSTR    lpCmdLine,
-                     _In_ int       nCmdShow)
-{
-    UNREFERENCED_PARAMETER(hPrevInstance);
-    UNREFERENCED_PARAMETER(lpCmdLine);
+//====================================================================
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+	MSG msg;
+	KWnd mainWnd(
+		L"BeemoPlayer",
+		hInstance, nCmdShow, WndProc,
+		NULL,
+		0, 0,
+		500, 500,
+		CS_HREDRAW | CS_VREDRAW,
+		WS_POPUP | WS_VISIBLE,
+		nullptr
+	);
 
-    // TODO: Place code here.
+	cx = GetSystemMetrics(SM_CXSCREEN);
+	cy = GetSystemMetrics(SM_CYSCREEN);
 
-    // Initialize global strings
-    LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
-    LoadStringW(hInstance, IDC_EXAMPROJECT, szWindowClass, MAX_LOADSTRING);
-    MyRegisterClass(hInstance);
-
-    // Perform application initialization:
-    if (!InitInstance (hInstance, nCmdShow))
-    {
-        return FALSE;
-    }
-
-    HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_EXAMPROJECT));
-
-    MSG msg;
-
-    // Main message loop:
-    while (GetMessage(&msg, nullptr, 0, 0))
-    {
-        if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
-        {
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
-        }
-    }
-
-    return (int) msg.wParam;
+	while (GetMessage(&msg, NULL, 0, 0)) {
+		TranslateMessage(&msg);
+		DispatchMessage(&msg);
+	}
+	return msg.wParam;
 }
 
+//====================================================================
 
+LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+	static FLOAT x = 0, y = 0; // текуща€ позици€ окна с м€чом
+	static FLOAT dX, dY; // приращени€ координат дл€ сдвига на новую позицию
+	static int alpha = 0; // угол, определ€ющий вращение м€ча
 
-//
-//  FUNCTION: MyRegisterClass()
-//
-//  PURPOSE: Registers the window class.
-//
-ATOM MyRegisterClass(HINSTANCE hInstance)
-{
-    WNDCLASSEXW wcex;
+	static HBITMAP hBmpPlayer; // растр с изображением м€ча
+	static HDC hMemDcFrame;   // совместимый контекст (контекст в пам€ти)
+	static HBITMAP hBmpFrame; // растр дл€ совместимого контекста
+	static HDC hDC;          // контекст диспле€
+	RECT rect;  // пр€моугольник клиентской области
 
-    wcex.cbSize = sizeof(WNDCLASSEX);
+	HDC hMemBmpDcPlayer;
 
-    wcex.style          = CS_HREDRAW | CS_VREDRAW;
-    wcex.lpfnWndProc    = WndProc;
-    wcex.cbClsExtra     = 0;
-    wcex.cbWndExtra     = 0;
-    wcex.hInstance      = hInstance;
-    wcex.hIcon          = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_EXAMPROJECT));
-    wcex.hCursor        = LoadCursor(nullptr, IDC_ARROW);
-    wcex.hbrBackground  = (HBRUSH)(COLOR_WINDOW+1);
-    wcex.lpszMenuName   = MAKEINTRESOURCEW(IDC_EXAMPROJECT);
-    wcex.lpszClassName  = szWindowClass;
-    wcex.hIconSm        = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
+	switch (message) {
+	case WM_CREATE:
+		hDC = GetDC(hWnd);
+		GetClientRect(hWnd, &rect);
+		hBmpPlayer = LoadBitmap((HINSTANCE)GetWindowLong(hWnd, GWL_HINSTANCE), MAKEINTRESOURCE(IDB_BITMAP1));
+		GetObject(hBmpPlayer, sizeof(bm), (LPSTR)&bm);
+		break;
 
-    return RegisterClassExW(&wcex);
+	case WM_PAINT:
+		hMemBmpDcPlayer = CreateCompatibleDC(hDC);
+		SelectObject(hMemBmpDcPlayer, hBmpPlayer);
+		BitBlt(hDC, 0, 0, bm.bmWidth, bm.bmHeight,
+				hMemBmpDcPlayer, 0, 0, SRCCOPY);
+		break;
+	case WM_DESTROY:
+		ReleaseDC(hWnd, hDC);
+		DeleteDC(hMemDcFrame);
+		PostQuitMessage(0);
+		break;
+	default:
+		return DefWindowProc(hWnd, message, wParam, lParam);
+		break;
+	}
 }
 
-//
-//   FUNCTION: InitInstance(HINSTANCE, int)
-//
-//   PURPOSE: Saves instance handle and creates main window
-//
-//   COMMENTS:
-//
-//        In this function, we save the instance handle in a global variable and
-//        create and display the main program window.
-//
-BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
-{
-   hInst = hInstance; // Store instance handle in our global variable
+//====================================================================
+void DrawPlayer(HWND hwnd, HDC hdc, HDC hMemFrameDC, HBITMAP hBmp, BITMAP bm, FLOAT x, FLOAT y) {
+	// ѕодготовка к выводу плеера
+	HDC hMemDcBall = CreateCompatibleDC(hdc);
+	SelectObject(hMemDcBall, hBmp);
+											 // ¬ывод м€ча
+	SaveDC(hMemFrameDC);
+	BitBlt(hMemFrameDC, -bm.bmWidth / 2, -bm.bmHeight / 2,
+		bm.bmWidth, bm.bmHeight,
+		hMemDcBall, 0, 0, SRCCOPY);
+	RestoreDC(hMemFrameDC, -1);
 
-   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-      CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
+	//  опирование изображени€ из hMemFrameDC в hdc
+	RECT rect;
+	GetClientRect(hwnd, &rect);
+	BitBlt(hdc, 0, 0, rect.right, rect.bottom, hMemFrameDC, 0, 0, SRCCOPY);
 
-   if (!hWnd)
-   {
-      return FALSE;
-   }
-
-   ShowWindow(hWnd, nCmdShow);
-   UpdateWindow(hWnd);
-
-   return TRUE;
+	DeleteDC(hMemDcBall);
 }
-
-//
-//  FUNCTION: WndProc(HWND, UINT, WPARAM, LPARAM)
-//
-//  PURPOSE:  Processes messages for the main window.
-//
-//  WM_COMMAND  - process the application menu
-//  WM_PAINT    - Paint the main window
-//  WM_DESTROY  - post a quit message and return
-//
-//
-LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
-{
-    switch (message)
-    {
-    case WM_COMMAND:
-        {
-            int wmId = LOWORD(wParam);
-            // Parse the menu selections:
-            switch (wmId)
-            {
-            case IDM_ABOUT:
-                DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
-                break;
-            case IDM_EXIT:
-                DestroyWindow(hWnd);
-                break;
-            default:
-                return DefWindowProc(hWnd, message, wParam, lParam);
-            }
-        }
-        break;
-    case WM_PAINT:
-        {
-            PAINTSTRUCT ps;
-            HDC hdc = BeginPaint(hWnd, &ps);
-            // TODO: Add any drawing code that uses hdc here...
-            EndPaint(hWnd, &ps);
-        }
-        break;
-    case WM_DESTROY:
-        PostQuitMessage(0);
-        break;
-    default:
-        return DefWindowProc(hWnd, message, wParam, lParam);
-    }
-    return 0;
-}
-
-// Message handler for about box.
-INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
-{
-    UNREFERENCED_PARAMETER(lParam);
-    switch (message)
-    {
-    case WM_INITDIALOG:
-        return (INT_PTR)TRUE;
-
-    case WM_COMMAND:
-        if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
-        {
-            EndDialog(hDlg, LOWORD(wParam));
-            return (INT_PTR)TRUE;
-        }
-        break;
-    }
-    return (INT_PTR)FALSE;
-}
+//////////////////////////////////////////////////////////////////////
