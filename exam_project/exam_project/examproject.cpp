@@ -12,9 +12,11 @@
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 void DrawPlayer(HWND hwnd, HDC hdc, HDC hMemFrameDC, HBITMAP hBmp, BITMAP bm, FLOAT x, FLOAT y);
+int getIDRegion(POINT p);
 
 int cx, cy; // размеры экрана
 BITMAP bm; // инфо о растре
+bool dragging = false; // if left mouse button is pressed right now
 
 //====================================================================
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
@@ -51,7 +53,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 	static HDC hMemDcFrame;   // совместимый контекст (контекст в памяти)
 	static HBITMAP hBmpFrame; // растр для совместимого контекста
 	static HDC hDC;          // контекст дисплея
-	RECT rect;  // прямоугольник клиентской области
+	static RECT rect;  // прямоугольник клиентской области
+	static POINT MousePnt, curPoint; // used to get coordinates of the mouse
 
 	HDC hMemBmpDcPlayer;
 
@@ -69,13 +72,52 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 		BitBlt(hDC, 0, 0, bm.bmWidth, bm.bmHeight,
 				hMemBmpDcPlayer, 0, 0, SRCCOPY);
 		break;
+
 	case WM_DESTROY:
 		ReleaseDC(hWnd, hDC);
 		DeleteDC(hMemDcFrame);
 		PostQuitMessage(0);
 		break;
+
+	case WM_LBUTTONDOWN:
+		// TODO : checking with mask
+		GetCursorPos(&MousePnt);
+		switch (getIDRegion(MousePnt)) {
+		// move window
+		case 0:	
+			dragging = true;
+			SetCapture(hWnd);
+		default:
+			MessageBox(NULL, L"Error", L"Error", 0);
+			break;
+		}
+		
+		
+		break;
+
+	case WM_MOUSEMOVE:
+		if (dragging) {		
+			GetCursorPos(&curPoint);
+
+			rect.left = rect.left + (curPoint.x - MousePnt.x);
+			rect.top = rect.top + (curPoint.y - MousePnt.y);
+
+			SetWindowPos(hWnd, NULL, rect.left, rect.top, 0, 0, SWP_NOSIZE);
+
+			MousePnt = curPoint; 
+		}
+		break;
+	case WM_LBUTTONUP:
+		if (dragging) {
+			dragging = false;
+			ReleaseCapture();
+		}
 	default:
 		return DefWindowProc(hWnd, message, wParam, lParam);
 		break;
 	}
+}
+
+int getIDRegion(POINT p) {
+	return 0;
 }
