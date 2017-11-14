@@ -79,24 +79,3 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 		break;
 	}
 }
-
-//====================================================================
-void DrawPlayer(HWND hwnd, HDC hdc, HDC hMemFrameDC, HBITMAP hBmp, BITMAP bm, FLOAT x, FLOAT y) {
-	// Подготовка к выводу плеера
-	HDC hMemDcBall = CreateCompatibleDC(hdc);
-	SelectObject(hMemDcBall, hBmp);
-											 // Вывод мяча
-	SaveDC(hMemFrameDC);
-	BitBlt(hMemFrameDC, -bm.bmWidth / 2, -bm.bmHeight / 2,
-		bm.bmWidth, bm.bmHeight,
-		hMemDcBall, 0, 0, SRCCOPY);
-	RestoreDC(hMemFrameDC, -1);
-
-	// Копирование изображения из hMemFrameDC в hdc
-	RECT rect;
-	GetClientRect(hwnd, &rect);
-	BitBlt(hdc, 0, 0, rect.right, rect.bottom, hMemFrameDC, 0, 0, SRCCOPY);
-
-	DeleteDC(hMemDcBall);
-}
-//////////////////////////////////////////////////////////////////////
