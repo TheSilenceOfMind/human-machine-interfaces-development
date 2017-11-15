@@ -68,7 +68,7 @@ KWnd::KWnd(
 	for (int i = 0; i < bm.bmHeight; i++) {
 		for (int j = 0; j < bm.bmWidth; j++) {
 			pixel = pMaskBits[i*bm.bmWidthBytes + j];
-			if (pixel != 255) {
+			if (!(pixel == 255 )) {
 				if (xStart == -1) xStart = j;
 			} else {
 				if (xStart != -1) {

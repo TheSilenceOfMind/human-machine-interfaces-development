@@ -53,10 +53,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 	static BITMAP bmMask;
 	static BITMAP bm;
 	static HRGN colorReg = 0;
-	const static int PERIOD = 1000 / 120;  // (ms) for color change 
+	const static int PERIOD = 100;  // (ms) for color change 
 #define NUM 3
-	const char* musicList[NUM] = { "D:\\Rammstein_Mutter.wav", "D:\\Chuck_Berry_-_Johnny_B_Goode.wav", "D:\\Carlos_Cipa-Lie_with_Me.wav" };
-
+	const char* musicList[NUM] = { "D:\\Chuck_Berry_-_Johnny_B_Goode.wav", "D:\\Rammstein_Mutter.wav", "D:\\Carlos_Cipa-Lie_with_Me.wav" };
+	PAINTSTRUCT ps;
 	static int cntList = 0;
 	static HDC hMemBmpDcPlayer;
 	static bool isPlaying = false;
@@ -77,15 +77,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 		// init dynamic color region
 		int pixel;
 		int xStart = -1;
-		for (int i = 0; i < bm.bmHeight; i++) {
-			for (int j = 0; j < bm.bmWidth; j++) {
-				pixel = pMaskBits[i*bm.bmWidthBytes + j];
-				if (pixel == 255) {
+		for (int i = 0; i < bmMask.bmHeight; i++) {
+			for (int j = 0; j < bmMask.bmWidth; j++) {
+				pixel = pMaskBits[i*bmMask.bmWidthBytes + j];
+				if (pixel == 7 || pixel == 207) {
 					if (xStart == -1) xStart = j;
 				} else {
 					if (xStart != -1) {
 						if (colorReg == 0)
-							colorReg = CreateRectRgn(xStart, bm.bmHeight - i - 1, j, bm.bmHeight - i);/*HRGN CreateRectRgn(
+							colorReg = CreateRectRgn(xStart, bmMask.bmHeight - i - 1, j, bmMask.bmHeight - i);/*HRGN CreateRectRgn(
 																								  _In_ int nLeftRect,
 																								  _In_ int nTopRect,
 																								  _In_ int nRightRect,
@@ -93,7 +93,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 																								  );*/
 						else
 							CombineRgn(colorReg, colorReg, CreateRectRgn(xStart,
-								bm.bmHeight - i - 1, j, bm.bmHeight - i), RGN_OR);
+								bmMask.bmHeight - i - 1, j, bmMask.bmHeight - i), RGN_OR);
 						xStart = -1;
 					}
 				}
@@ -113,12 +113,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 
 	case WM_PAINT:
 		//debug(b++);
-		PAINTSTRUCT ps;
 		dc = BeginPaint(hWnd, &ps);
 		hMemBmpDcPlayer = CreateCompatibleDC(dc);
 		SelectObject(hMemBmpDcPlayer, hBmpPlayer);
 		BitBlt(dc, 0, 0, bm.bmWidth, bm.bmHeight,
 			hMemBmpDcPlayer, 0, 0, SRCCOPY);
+		DeleteObject(hMemBmpDcPlayer);
 		EndPaint(hWnd, &ps);
 		break;
 
@@ -159,7 +159,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 			if (isPlaying) {
 				PlaySound(NULL, NULL, SND_ASYNC);
 				isPlaying = false;
-				//KillTimer(hWnd, 1);
+				KillTimer(hWnd, 1);
+				InvalidateRgn(hWnd, colorReg, TRUE);
 			} else {
 				USES_CONVERSION;
 				LPCWSTR w = A2W(musicList[cntList]);
@@ -191,9 +192,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 		break;
 
 	case WM_TIMER :
-		/*StretchBlt(hDC, 0, 0, bm.bmWidth, bm.bmHeight,
-			hDC, 0, 0, bm.bmWidth/2, bm.bmHeight/2, SRCCOPY);
-*/
+		FillRgn(hDC, colorReg, CreateSolidBrush(RGB(rand() % 256, rand() % 256, rand() % 256)));
 		break;
 
 	case WM_MOUSEMOVE:
