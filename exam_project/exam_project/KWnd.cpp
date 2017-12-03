@@ -55,7 +55,7 @@ KWnd::KWnd(
 	}
 
 	BITMAP bm;
-	HBITMAP hMask = (HBITMAP)LoadImage(NULL, L"D:\\mask_ex.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE | LR_CREATEDIBSECTION);
+	HBITMAP hMask = (HBITMAP)LoadImage(NULL, L"D:\\mask_ex_notActive.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE | LR_CREATEDIBSECTION);
 	if (hMask == NULL) {
 		MessageBox(nullptr, L"Error! Loading Image", NULL, NULL);
 	}

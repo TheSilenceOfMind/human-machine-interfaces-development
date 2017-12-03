@@ -21,6 +21,14 @@ BITMAP bm; // инфо о растре
 bool dragging = false; // if left mouse button is pressed right now
 
 
+// mouse's label
+HWND hLabelWnd;
+const int label_h = 20, label_w = 70;
+const int dx = 12, dy = 12;
+int label_x, label_y;
+bool OnCreateLabel(int x, int y, TCHAR msg[]);
+bool OnDeleteLabel();
+
 //====================================================================
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
 	MSG msg;
@@ -34,7 +42,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		WS_POPUP,
 		nullptr
 	);
-	
+
 	while (GetMessage(&msg, NULL, 0, 0)) {
 		TranslateMessage(&msg);
 		DispatchMessage(&msg);
@@ -50,9 +58,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 	static RECT rect;
 	static POINT MousePnt, curPoint; // used to get coordinates of the mouse
 	static unsigned char *pMaskBits; // used in getIDRegion function
+	static unsigned char *pMaskNotActiveBits;
 	static BITMAP bmMask;
 	static BITMAP bm;
 	static HRGN colorReg = 0;
+	static HRGN allRgn = 0;
+	static HRGN notActiveRgn = 0;
+	
+	
+
 	const static int PERIOD = 100;  // (ms) for color change 
 #define NUM 3
 	const char* musicList[NUM] = { "D:\\Chuck_Berry_-_Johnny_B_Goode.wav", "D:\\Rammstein_Mutter.wav", "D:\\Carlos_Cipa-Lie_with_Me.wav" };
@@ -64,6 +78,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 
 	static int x, y;
 	static int b = 0;
+
+	int regID;
 
 	if (pMaskBits == nullptr) {
 		// init bits of the mask
@@ -93,6 +109,61 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 																								  );*/
 						else
 							CombineRgn(colorReg, colorReg, CreateRectRgn(xStart,
+								bmMask.bmHeight - i - 1, j, bmMask.bmHeight - i), RGN_OR);
+						xStart = -1;
+					}
+				}
+			}
+		}
+
+		xStart = -1;
+		for (int i = 0; i < bmMask.bmHeight; i++) {
+			for (int j = 0; j < bmMask.bmWidth; j++) {
+				pixel = pMaskBits[i*bmMask.bmWidthBytes + j];
+				if (!(pixel == 255)) {
+					if (xStart == -1) xStart = j;
+				} else {
+					if (xStart != -1) {
+						if (allRgn == 0)
+							allRgn = CreateRectRgn(xStart, bmMask.bmHeight - i - 1, j, bmMask.bmHeight - i);/*HRGN CreateRectRgn(
+																								  _In_ int nLeftRect,
+																								  _In_ int nTopRect,
+																								  _In_ int nRightRect,
+																								  _In_ int nBottomRect
+																								  );*/
+						else
+							CombineRgn(allRgn, allRgn, CreateRectRgn(xStart,
+								bmMask.bmHeight - i - 1, j, bmMask.bmHeight - i), RGN_OR);
+						xStart = -1;
+					}
+				}
+
+			}
+		}
+
+		hMask = (HBITMAP)LoadImage(NULL, L"D:\\mask_ex_notActive.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE | LR_CREATEDIBSECTION);
+		if (hMask == NULL) {
+			MessageBox(nullptr, L"Error! Loading Image", NULL, NULL);
+		}
+		GetObject(hMask, sizeof(bmMask), &bmMask);
+		pMaskNotActiveBits = (BYTE *)bmMask.bmBits;
+		xStart = -1;
+		for (int i = 0; i < bmMask.bmHeight; i++) {
+			for (int j = 0; j < bmMask.bmWidth; j++) {
+				pixel = pMaskNotActiveBits[i*bmMask.bmWidthBytes + j];
+				if (!(pixel == 255)) {
+					if (xStart == -1) xStart = j;
+				} else {
+					if (xStart != -1) {
+						if (notActiveRgn == 0)
+							notActiveRgn = CreateRectRgn(xStart, bmMask.bmHeight - i - 1, j, bmMask.bmHeight - i);/*HRGN CreateRectRgn(
+																											_In_ int nLeftRect,
+																											_In_ int nTopRect,
+																											_In_ int nRightRect,
+																											_In_ int nBottomRect
+																											);*/
+						else
+							CombineRgn(notActiveRgn, notActiveRgn, CreateRectRgn(xStart,
 								bmMask.bmHeight - i - 1, j, bmMask.bmHeight - i), RGN_OR);
 						xStart = -1;
 					}
@@ -160,12 +231,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 				PlaySound(NULL, NULL, SND_ASYNC);
 				isPlaying = false;
 				KillTimer(hWnd, 1);
+				SetWindowRgn(hWnd, notActiveRgn, TRUE);
 				InvalidateRgn(hWnd, colorReg, TRUE);
 			} else {
 				USES_CONVERSION;
 				LPCWSTR w = A2W(musicList[cntList]);
 				PlaySound(w, NULL, SND_ASYNC | SND_LOOP);
-				isPlaying = true;
+				isPlaying = true;	
+				//allRgn = CreateRectRgn(125, 125, 375, 375);
+				SetWindowRgn(hWnd, allRgn, TRUE);
 				SetTimer(hWnd, 1, PERIOD, NULL);
 			}
 			break;
@@ -198,10 +272,25 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 	case WM_MOUSEMOVE:
 		x = LOWORD(lParam);
 		y = HIWORD(lParam);
-		if (getIDRegion(x, y, pMaskBits, bm.bmWidth) != 0) {
+		regID = getIDRegion(x, y, pMaskBits, bm.bmWidth);
+		if ( regID != 0) {
 			SetCursor(LoadCursor((HINSTANCE)GetWindowLong(hWnd, GWL_EXSTYLE), MAKEINTRESOURCE(IDC_HAND)));
+			if (hLabelWnd == NULL) {
+				switch (regID) {
+				case 1: OnCreateLabel(x, y, L"close"); break;
+				case 2: OnCreateLabel(x, y, L"next"); break;
+				case 3: OnCreateLabel(x, y, L"play/stop"); break;
+				case 4: OnCreateLabel(x, y, L"previos"); break;
+				}
+			}
+			MoveWindow(hLabelWnd, x + dx, y + dy, label_w, label_h, TRUE);
 		} else {
 			SetCursor(LoadCursor((HINSTANCE)GetWindowLong(hWnd, GWL_EXSTYLE), MAKEINTRESOURCE(IDC_ARROW)));
+			if (hLabelWnd != NULL) {
+				OnDeleteLabel();
+				hLabelWnd = NULL;
+			}
+				
 		}
 
 		if (dragging) {	
@@ -220,6 +309,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 			dragging = false;
 			ReleaseCapture();
 		}
+		break;
 	default:
 		return DefWindowProc(hWnd, message, wParam, lParam);
 		break;
@@ -257,4 +347,26 @@ void debug(int val) {
 	wchar_t text_buffer[20] = { 0 }; // temporary buffer
 	swprintf(text_buffer, _countof(text_buffer), L"%d\n", (int)val); // convert
 	OutputDebugString(text_buffer); // print
+}
+
+bool OnCreateLabel(int x, int y, TCHAR msg[]) {
+	label_x = x;
+	label_y = y;
+	hLabelWnd = CreateWindow(L"static", L"ST_U",
+		WS_VISIBLE | WS_POPUP,
+		label_x, label_y, label_w, label_h,
+		NULL, NULL,
+		NULL, NULL);
+	if (!hLabelWnd) {
+		TCHAR msg[] = L"Cannot create window: ";
+		lstrcat(msg, L"label");
+		MessageBox(NULL, msg, L"Error", MB_OK);
+		return false;
+	}
+	SetWindowText(hLabelWnd, msg);
+	return true;
+}
+
+bool OnDeleteLabel() {
+	return DestroyWindow(hLabelWnd);
 }
